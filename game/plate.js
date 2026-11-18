@@ -69,9 +69,8 @@ function inOval(x, y) {
     1
   );
 }
-function randomColor() {
-  const h = Math.random() * 6,
-    i = Math.floor(h),
+function randomColor(h = Math.random() * 6) {
+  const i = Math.floor(h),
     f = h - i,
     v = random(0.68, 0.96),
     s = random(0.45, 0.8),
@@ -95,6 +94,22 @@ function randomColor() {
       )
       .join("")
   );
+}
+function recolorOnPress(b) {
+  const [r, g, blue] = b.color.match(/\w\w/g).map((hex) => parseInt(hex, 16));
+  const max = Math.max(r, g, blue);
+  const range = max - Math.min(r, g, blue);
+  if (range === 0) {
+    b.color = randomColor();
+  } else {
+    let hue;
+    if (max === r) hue = (g - blue) / range;
+    else if (max === g) hue = 2 + (blue - r) / range;
+    else hue = 4 + (r - g) / range;
+    // Move at least one sixth of the color wheel in either direction.
+    b.color = randomColor((hue + random(1, 5) + 6) % 6);
+  }
+  if (state.selected === b) syncPicker();
 }
 function specimen(shape = "ellipse", w = 160, h = 160, color = "#080808") {
   return {
@@ -433,6 +448,7 @@ document.addEventListener(
     $("desktop").setPointerCapture(e.pointerId);
     if (b) {
       if (b.action === "dead") return;
+      recolorOnPress(b);
       const p = pose(b),
         dx = p.x - e.clientX,
         dy = p.y - e.clientY;
