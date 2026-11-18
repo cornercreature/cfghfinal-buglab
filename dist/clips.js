@@ -13,7 +13,7 @@ const clips = {
   },
   nudge: {
     width: 403,
-    height: 189,
+    height: 185,
     cols: 6,
     durations: [
       70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70,

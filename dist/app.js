@@ -113,7 +113,7 @@ const sources = {
   pupilR: "9d628.svg",
   left: "left.png",
   right: "right.png?v=a6666244f7a8",
-  nudge: "nudge.png",
+  nudge: "nudge.png?v=68cbe792a33e",
 };
 const loadImages = Promise.all(
   Object.entries(sources).map(async ([key, file]) => {
