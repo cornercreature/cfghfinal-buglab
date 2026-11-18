@@ -54,7 +54,7 @@ const defaults = {
     head: [0, -101],
     eyes: [0, -111],
     left: [-106, 8],
-    right: [88, 46],
+    right: [65, 32],
   },
   timers,
   link: true,
