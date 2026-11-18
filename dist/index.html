@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f7f7fa" />
+    <title>Spider Studio · Sprite workbench</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">✳</span>Spider Studio
+      </div>
+      <div class="header-rule"></div>
+      <span class="header-tab">Workbench</span
+      ><span class="save" id="save">Local workspace</span>
+    </header>
+    <main>
+      <section class="intro">
+        <div>
+          <h1>Sprite workbench</h1>
+          <p id="instruction">
+            Drag the parts into position, then confirm your spider to preview
+            it.
+          </p>
+        </div>
+        <div class="sprite-actions">
+          <button id="openSprite" disabled>Open sprite…</button>
+          <input type="file" id="spriteFile" accept=".spider" hidden />
+          <button id="saveSprite" disabled>Save Sprite…</button>
+          <button id="lock" class="primary">
+            <i data-icon="check"></i><span>Confirm placement</span>
+          </button>
+        </div>
+      </section>
+      <div class="layout">
+        <section class="paper">
+          <div class="panel-title">
+            <h2><i data-icon="canvas"></i>Assembly canvas</h2>
+            <span class="pill" id="state">Editing</span>
+          </div>
+          <div class="stage" id="stage">
+            <canvas
+              id="canvas"
+              tabindex="0"
+              aria-label="Spider assembly. Drag visible parts or select a part and use arrow keys to move it."
+            ></canvas>
+            <div class="float-tools">
+              <button id="smaller" aria-label="Zoom out">−</button
+              ><button id="zoom" title="Reset zoom">100%</button
+              ><button id="larger" aria-label="Zoom in">+</button><b></b
+              ><button id="grid" aria-label="Toggle grid" aria-pressed="false">
+                <i data-icon="grid"></i>
+              </button>
+            </div>
+          </div>
+          <div class="preview">
+            <div class="preview-header">
+              <h2><i data-icon="playbox"></i>Motion preview</h2>
+              <output id="clock">0.00 s</output>
+            </div>
+            <div class="playmodes">
+              <button id="animate" disabled>
+                <i data-icon="loop"></i>Animate in place</button
+              ><button id="walk" disabled>
+                <i data-icon="route"></i>Test walk</button
+              ><label id="ghostLabel" hidden
+                ><input id="ghost" type="checkbox" /> Show body outlines</label
+              >
+            </div>
+            <div class="transport">
+              <button id="play" aria-label="Play or pause preview" disabled>
+                <i data-icon="play"></i></button
+              ><input
+                type="range"
+                id="timeline"
+                min="0"
+                max="4"
+                step=".01"
+                value="0"
+                disabled
+                aria-label="Shared preview playhead"
+              /><span>4.00 s</span>
+            </div>
+          </div>
+        </section>
+        <aside>
+          <div class="tabs" role="tablist" aria-label="Inspector">
+            <button role="tab" data-tab="parts">Parts</button
+            ><button role="tab" data-tab="eyes">Expressions</button
+            ><button role="tab" data-tab="timing">Timing</button><button role="tab" data-tab="actions">Actions</button>
+          </div>
+          <div id="inspector" role="tabpanel"></div>
+        </aside>
+      </div>
+    </main>
+    <dialog id="spriteDialog" aria-labelledby="spriteDialogTitle">
+      <form id="spriteForm">
+        <h2 id="spriteDialogTitle">Save Sprite</h2>
+        <label for="spriteName">Sprite name</label>
+        <input id="spriteName" class="numeric" type="text" maxlength="100" required />
+        <p>Download a .spider file with your artwork and settings.</p>
+        <p id="exportError" role="alert" hidden></p>
+        <div class="sprite-actions">
+          <button type="button" id="cancelSprite">Cancel</button>
+          <button type="submit" class="primary">Download sprite</button>
+        </div>
+      </form>
+    </dialog>
+    <script src="clips.js"></script>
+    <script src="assets/omggif.js"></script>
+    <script src="import.js"></script>
+    <script src="actions.js"></script>
+    <script src="sprite-file.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
