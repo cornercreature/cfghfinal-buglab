@@ -50,6 +50,7 @@ const defaults = {
   color: "#080808",
   locked: false,
   angles: { left: 0, right: 0 },
+  actions: {},
   points: {
     body: [0, 10],
     head: [0, -101],
@@ -208,7 +209,13 @@ function paintPart(c, id, seconds = 0) {
   } else if (id === "head") {
     centered(c, "head", 0, 0, 45, 45);
   } else if (id === "eyes") {
-    eyes(c, expr, exprTime);
+    eyes(
+      c,
+      tab === "actions" ? editor.action : expr,
+      tab === "actions"
+        ? (editor.at * data.holds[editor.action]) / 1000
+        : exprTime,
+    );
   } else
     clip(c, id, (280.2 * clips[id].width) / clips[id].height, 280.2, seconds);
 }
@@ -226,19 +233,20 @@ function isLeg(id) {
 function legPivot(id) {
   return bounds(id)[0] * (id === "left" ? 0.26 : -0.26);
 }
-function partTransform(id) {
-  const matrix = new DOMMatrix().translate(...data.points[id]);
-  if (isLeg(id)) {
-    const pivot = legPivot(id);
-    matrix
-      .translateSelf(pivot, 0)
-      .rotateSelf(data.angles[id])
-      .translateSelf(-pivot, 0);
-  }
+function partTransform(id, sample = liveAction()) {
+  const matrix = actionParent(id, sample).translateSelf(...data.points[id]);
+  const pose = sample ? poseAt(sample.action, id, sample.at) : restPose;
+  const pivot = isLeg(id) ? legPivot(id) : 0;
+  poseAround(
+    matrix,
+    { ...pose, angle: pose.angle + (isLeg(id) ? data.angles[id] : 0) },
+    pivot,
+    0,
+  );
   return matrix;
 }
-function placePart(c, id) {
-  const { a, b, c: skew, d, e, f } = partTransform(id);
+function placePart(c, id, sample = liveAction()) {
+  const { a, b, c: skew, d, e, f } = partTransform(id, sample);
   c.transform(a, b, skew, d, e, f);
 }
 function handleOffset(id) {
@@ -314,6 +322,25 @@ function transform(c, p, scale) {
 function walkScale(g) {
   return Math.min(g.fit * 0.43, g.w / 1250, g.h / 650);
 }
+function placeBrush(sample) {
+  ctx.translate(...data.points.body);
+  if (
+    sample &&
+    (data.actions?.[sample.action]?.body?.length ||
+      data.actions?.[sample.action]?.whole?.length)
+  ) {
+    let scale = 1;
+    for (const target of ["whole", "body"]) {
+      const pose = poseAt(sample.action, target, sample.at);
+      ctx.translate(pose.x, pose.y);
+      ctx.rotate(pose.angle * Math.PI / 180);
+      ctx.scale(pose.size / 100, pose.size / 100);
+      scale *= pose.size / 100;
+    }
+    return scale;
+  }
+  return 1;
+}
 // The brush is a transformed copy of the body at successive sub-pixel intervals.
 function walkFrame(g) {
   const scale = walkScale(g),
@@ -322,10 +349,11 @@ function walkFrame(g) {
   ctx.fillStyle = data.color;
   ctx.beginPath();
   for (let i = 0; i <= count; i++) {
-    const p = walkPose(count ? (elapsed * i) / count : 0, g);
+    const time = count ? (elapsed * i) / count : 0;
+    const p = walkPose(time, g);
     ctx.save();
     transform(ctx, p, scale);
-    ctx.translate(...data.points.body);
+    placeBrush(walkActionAt(time));
     if (data.shape === "ellipse") {
       ctx.moveTo(data.w / 2, 0);
       ctx.ellipse(0, 0, data.w / 2, data.h / 2, 0, 0, 2 * Math.PI);
@@ -337,12 +365,12 @@ function walkFrame(g) {
   if (elapsed > 0) {
     ctx.save();
     transform(ctx, walkPose(elapsed, g), scale);
-    ctx.translate(...data.points.body);
+    const brushScale = placeBrush(liveAction());
     bodyPath(ctx);
     // Cut only the trail. The body covers the inner half of the stroke,
     // leaving two CSS pixels of the sheet visible along the contact edge.
     ctx.globalCompositeOperation = "destination-out";
-    ctx.lineWidth = 4 / scale;
+    ctx.lineWidth = 4 / (scale * brushScale);
     ctx.stroke();
     ctx.restore();
   }
@@ -350,7 +378,7 @@ function walkFrame(g) {
     for (let s = 0; s <= elapsed + 0.001; s += 0.45) {
       ctx.save();
       transform(ctx, walkPose(s, g), scale);
-      ctx.translate(...data.points.body);
+      placeBrush(walkActionAt(s));
       bodyPath(ctx);
       ctx.strokeStyle = "#b687fb";
       ctx.lineWidth = 1.25 / scale;
@@ -381,8 +409,11 @@ function draw() {
     ctx.save();
     ctx.translate(g.x, g.y);
     ctx.scale(g.fit, g.fit);
-    spider(ctx, t);
-    if (!data.locked) drawSelection(ctx);
+    spider(
+      ctx,
+      tab === "actions" ? (editor.at * data.holds[editor.action]) / 1000 : t,
+    );
+    if (tab !== "actions" && !data.locked) drawSelection(ctx);
     ctx.restore();
   }
   $("clock").value = t.toFixed(2) + " s";
@@ -584,7 +615,14 @@ function render() {
     .querySelectorAll("[data-tab]")
     .forEach((el) => el.setAttribute("aria-selected", el.dataset.tab === tab));
   $("inspector").innerHTML =
-    tab === "parts" ? partPanel() : tab === "eyes" ? eyePanel() : timingPanel();
+    tab === "parts"
+      ? partPanel()
+      : tab === "eyes"
+        ? eyePanel()
+        : tab === "actions"
+          ? actionPanel()
+          : timingPanel();
+  if (tab === "actions") bindActionPanel();
   document
     .querySelectorAll("[data-thumb]")
     .forEach((el) => thumb(el, el.dataset.thumb));
@@ -635,6 +673,10 @@ function render() {
   document.querySelectorAll("[data-eye]").forEach(
     (el) =>
       (el.onclick = () => {
+        if (mode === "walk") {
+          walkEvents = walkEvents.filter((e) => e.time < t);
+          walkEvents.push({ time: t, action: el.dataset.eye });
+        }
         trigger(el.dataset.eye);
         if (expr !== "default") holdTarget = expr;
         render();
@@ -703,21 +745,28 @@ function render() {
   syncControls();
 }
 function syncControls() {
+  document.querySelector(".preview").hidden = tab === "actions";
+  $("lock").hidden = tab === "actions";
   const locked = data.locked;
   $("lock").innerHTML =
     icon(locked ? "edit" : "check") +
     (locked ? "Edit placement" : "Confirm placement");
-  $("instruction").textContent = locked
-    ? "Placement confirmed. Preview your spider or adjust its brush."
-    : "Drag the parts into position, then confirm your spider to preview it.";
+  $("instruction").textContent =
+    tab === "actions"
+      ? "Set poses on the action timeline and play them with the matching eyes."
+      : locked
+        ? "Placement confirmed. Preview your spider or adjust its brush."
+        : "Drag the parts into position, then confirm your spider to preview it.";
   $("state").textContent =
-    mode === "walk"
-      ? "Test walk"
-      : mode === "animate"
-        ? "Animating in place"
-        : locked
-          ? "Placement locked"
-          : "Editing";
+    tab === "actions"
+      ? eyeNames[editor.action]
+      : mode === "walk"
+        ? "Test walk"
+        : mode === "animate"
+          ? "Animating in place"
+          : locked
+            ? "Placement locked"
+            : "Editing";
   for (const id of ["walk", "animate"]) {
     $(id).disabled = !locked;
     $(id).setAttribute("aria-pressed", id === mode);
@@ -740,8 +789,16 @@ function clearExpression() {
 document.querySelectorAll("[data-tab]").forEach(
   (el) =>
     (el.onclick = () => {
+      if (tab === "actions" || el.dataset.tab === "actions") {
+        editor.playing = false;
+        playing = false;
+        mode = "";
+        t = 0;
+        clearExpression();
+      }
       tab = el.dataset.tab;
       render();
+      draw();
     }),
 );
 on("lock", "click", () => {
@@ -756,6 +813,7 @@ on("lock", "click", () => {
 });
 for (const id of ["walk", "animate"])
   on(id, "click", () => {
+    walkEvents = [];
     mode = id;
     playing = true;
     t = 0;
@@ -772,7 +830,11 @@ on("play", "click", () => {
 on("timeline", "input", (e) => {
   playing = false;
   t = +e.target.value;
-  if (expr !== "default") exprTime = Math.max(0, t - exprStart);
+  if (mode === "walk") syncWalkExpression();
+  else if (expr !== "default") {
+    exprTime = Math.max(0, t - exprStart);
+    if (exprTime >= data.holds[expr]) clearExpression();
+  }
   syncControls();
   draw();
 });
@@ -824,7 +886,33 @@ function pointerAngle(x, y) {
   return (Math.atan2(y - cy, x - cx - legPivot(sel)) * 180) / Math.PI;
 }
 on("canvas", "pointerdown", (e) => {
-  if (!ready || data.locked) return;
+  if (!ready) return;
+  if (tab === "actions") {
+    const [x, y] = world(e),
+      id = partAt(x, y);
+    if (!id) return;
+    editor.playing = false;
+    if (editor.target !== "whole") editor.target = id;
+    editor.at = Math.round(editor.at);
+    const pose = poseAt(editor.action, editor.target, editor.at);
+    const parent =
+      editor.target === "whole"
+        ? new DOMMatrix()
+        : actionParent(editor.target, editor);
+    drag = {
+      action: true,
+      x,
+      y,
+      baseX: pose.x,
+      baseY: pose.y,
+      inverse: parent.inverse(),
+    };
+    canvas.setPointerCapture(e.pointerId);
+    render();
+    draw();
+    return;
+  }
+  if (data.locked) return;
   const [x, y] = world(e),
     rotating = onRotationHandle(x, y),
     id = rotating ? sel : partAt(x, y);
@@ -841,6 +929,20 @@ on("canvas", "pointerdown", (e) => {
   draw();
 });
 on("canvas", "pointermove", (e) => {
+  if (ready && tab === "actions") {
+    const [x, y] = world(e);
+    canvas.style.cursor = drag ? "grabbing" : partAt(x, y) ? "grab" : "default";
+    if (drag?.action) {
+      const dx = x - drag.x,
+        dy = y - drag.y,
+        m = drag.inverse;
+      setActionKey({
+        x: clamp(drag.baseX + m.a * dx + m.c * dy, -1000, 1000),
+        y: clamp(drag.baseY + m.b * dx + m.d * dy, -1000, 1000),
+      });
+    }
+    return;
+  }
   if (!ready || data.locked) {
     canvas.style.cursor = "default";
     return;
@@ -875,7 +977,7 @@ on("canvas", "pointerup", finishDrag);
 on("canvas", "pointercancel", finishDrag);
 on("canvas", "lostpointercapture", finishDrag);
 on("canvas", "keydown", (e) => {
-  if (data.locked) return;
+  if (data.locked || tab === "actions") return;
   const delta = {
     ArrowLeft: [-1, 0],
     ArrowRight: [1, 0],
@@ -890,11 +992,31 @@ on("canvas", "keydown", (e) => {
     draw();
   }
 });
+function syncWalkExpression() {
+  const sample = walkActionAt(t);
+  const previous = expr;
+  expr = sample?.action || "default";
+  exprTime = sample ? (sample.at * data.holds[expr]) / 1000 : 0;
+  if (expr === previous) return;
+  document
+    .querySelectorAll("[data-eye]")
+    .forEach((el) => el.setAttribute("aria-pressed", el.dataset.eye === expr));
+}
 let last = 0;
 function tick(now) {
   const dt = last ? (now - last) / 1000 : 0;
   last = now;
   let changed = false;
+  if (tab === "actions" && editor.playing) {
+    editor.at = Math.min(
+      1000,
+      editor.at + (dt * 1000) / data.holds[editor.action],
+    );
+    if (editor.at >= 1000) editor.playing = false;
+    updateActionFields();
+    changed = true;
+  }
+  const advancingWalk = mode === "walk" && playing;
   if (playing) {
     t += dt;
     if (t >= 4) {
@@ -906,7 +1028,8 @@ function tick(now) {
     }
     changed = true;
   }
-  if (expr !== "default" && (playing || !mode || t >= 4)) {
+  if (advancingWalk) syncWalkExpression();
+  else if (expr !== "default" && (playing || !mode || t >= 4)) {
     exprTime += dt;
     if (exprTime >= data.holds[expr]) clearExpression();
     changed = true;

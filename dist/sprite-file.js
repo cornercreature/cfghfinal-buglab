@@ -67,6 +67,7 @@ function readSettings(raw, metadata) {
     );
     result.timers[key] = { speed: timer.speed, first: timer.first };
   }
+  result.actions = readActions(raw.actions);
   return result;
 }
 
@@ -209,6 +210,8 @@ function setupSpriteFiles() {
       });
       installArtwork(decoded);
       data = { ...decoded.settings, spriteName: file.name, openedId: id };
+      editor.playing = false;
+      walkEvents = [];
       mode = "";
       playing = false;
       t = 0;

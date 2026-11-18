@@ -527,3 +527,9 @@ button:disabled {
 #exportError {
   color: #9d3145;
 }
+.action-scrub { width:100%; margin:6px 0; }
+.action-keys { display:flex; flex-wrap:wrap; gap:5px; }
+.action-keys button { font-size:11px; min-height:25px; padding:3px 7px; }
+.tabs button { padding-inline:4px; }
+.key-marks { position:relative; height:7px; margin:-5px 8px 3px; }
+.key-marks i { position:absolute; top:0; width:5px; height:5px; background:var(--accent); transform:translateX(-50%) rotate(45deg); }
