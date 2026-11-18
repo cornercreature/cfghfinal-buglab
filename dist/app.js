@@ -334,6 +334,18 @@ function walkFrame(g) {
     ctx.restore();
   }
   ctx.fill();
+  if (elapsed > 0) {
+    ctx.save();
+    transform(ctx, walkPose(elapsed, g), scale);
+    ctx.translate(...data.points.body);
+    bodyPath(ctx);
+    // Cut only the trail. The body covers the inner half of the stroke,
+    // leaving two CSS pixels of the sheet visible along the contact edge.
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.lineWidth = 4 / scale;
+    ctx.stroke();
+    ctx.restore();
+  }
   if ($("ghost").checked) {
     for (let s = 0; s <= elapsed + 0.001; s += 0.45) {
       ctx.save();
