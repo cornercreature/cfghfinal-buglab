@@ -289,13 +289,40 @@ function drawSelection(c) {
   }
   c.restore();
 }
-function spider(c, time) {
+function deathOpacity(sample, target) {
+  return sample?.action === "dead" ? poseAt("dead", target, sample.at).opacity / 100 : 1;
+}
+function drawSpiderParts(c, time, sample) {
   for (const id of drawOrder) {
     c.save();
-    placePart(c, id);
+    c.globalAlpha *= deathOpacity(sample, id);
+    placePart(c, id, sample);
     paintPart(c, id, time);
     c.restore();
   }
+}
+const fadeLayer = document.createElement("canvas");
+const fadeContext = fadeLayer.getContext("2d");
+function spider(c, time) {
+  const sample = liveAction();
+  const opacity = deathOpacity(sample, "whole");
+  if (opacity === 0) return;
+  if (opacity === 1) {
+    drawSpiderParts(c, time, sample);
+    return;
+  }
+  // Composite the assembled sprite once so overlapping parts fade together.
+  if (fadeLayer.width !== c.canvas.width) fadeLayer.width = c.canvas.width;
+  if (fadeLayer.height !== c.canvas.height) fadeLayer.height = c.canvas.height;
+  fadeContext.resetTransform();
+  fadeContext.clearRect(0, 0, fadeLayer.width, fadeLayer.height);
+  fadeContext.setTransform(c.getTransform());
+  drawSpiderParts(fadeContext, time, sample);
+  c.save();
+  c.resetTransform();
+  c.globalAlpha *= opacity;
+  c.drawImage(fadeLayer, 0, 0);
+  c.restore();
 }
 function geometry() {
   const w = canvas.clientWidth,
@@ -365,11 +392,13 @@ function walkFrame(g) {
   if (elapsed > 0) {
     ctx.save();
     transform(ctx, walkPose(elapsed, g), scale);
-    const brushScale = placeBrush(liveAction());
+    const sample = liveAction();
+    const brushScale = placeBrush(sample);
     bodyPath(ctx);
     // Cut only the trail. The body covers the inner half of the stroke,
     // leaving two CSS pixels of the sheet visible along the contact edge.
     ctx.globalCompositeOperation = "destination-out";
+    ctx.globalAlpha = deathOpacity(sample, "whole") * deathOpacity(sample, "body");
     ctx.lineWidth = 4 / (scale * brushScale);
     ctx.stroke();
     ctx.restore();

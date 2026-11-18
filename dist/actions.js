@@ -2,7 +2,7 @@
 
 // Positions are offsets from the editable assembly. Key times are thousandths
 // of the action duration so changing its length also retimes every track.
-const restPose = { x: 0, y: 0, angle: 0, size: 100 };
+const restPose = { x: 0, y: 0, angle: 0, size: 100, opacity: 100 };
 const poseLimits = {
   x: [-1000, 1000],
   y: [-1000, 1000],
@@ -47,6 +47,11 @@ function readActions(value) {
           );
           result[prop] = key[prop];
         }
+        if (action === "dead") {
+          const opacity = key.opacity === undefined ? 100 : key.opacity;
+          assertSprite(Number.isFinite(opacity) && opacity >= 0 && opacity <= 100);
+          result.opacity = opacity;
+        }
         return result;
       });
     }
@@ -59,13 +64,15 @@ function poseAt(action, target, at) {
   if (!keys?.length) return restPose;
   const i = keys.findIndex((k) => k.at >= at);
   const next = i < 0 ? { at: 1000, ...restPose } : keys[i];
-  if (next.at === at) return next;
+  if (next.at === at) return { ...restPose, ...next };
   const prev =
     i === 0 ? { at: 0, ...restPose } : keys[i < 0 ? keys.length - 1 : i - 1];
   const blend = (at - prev.at) / (next.at - prev.at);
   const pose = {};
-  for (const k of Object.keys(restPose))
-    pose[k] = prev[k] + (next[k] - prev[k]) * blend;
+  for (const k of Object.keys(restPose)) {
+    const start = prev[k] ?? restPose[k];
+    pose[k] = start + ((next[k] ?? restPose[k]) - start) * blend;
+  }
   return pose;
 }
 function liveAction() {
@@ -151,6 +158,10 @@ function actionPanel() {
     "</label><label>Scale (%)" +
     num("poseSize", 100, 5, 400, 0.1) +
     "</label></div>" +
+    (editor.action === "dead"
+      ? '<div class="row"><label for="poseOpacity">Opacity (%)</label>' +
+        num("poseOpacity", 100, 0, 100, 0.1) + "</div>"
+      : "") +
     '<p class="note">Scrub to a time, then drag on the spider or edit a value to set a keyframe.</p>' +
     '<div class="row"><button id="setKey">Set keyframe</button><button id="deleteKey">Delete key</button></div>' +
     '<div id="actionKeys" class="action-keys" aria-label="Keyframes for selected part"></div></div>'
@@ -161,11 +172,12 @@ const poseInputs = {
   y: "poseY",
   angle: "poseAngle",
   size: "poseSize",
+  opacity: "poseOpacity",
 };
 function updateActionFields() {
   const frame = poseAt(editor.action, editor.target, editor.at);
   for (const [key, id] of Object.entries(poseInputs)) {
-    if (document.activeElement !== $(id) || editor.playing)
+    if ($(id) && (document.activeElement !== $(id) || editor.playing))
       $(id).value = +frame[key].toFixed(2);
   }
   $("actionPlay").textContent = editor.playing ? "Pause action" : "Play action";
@@ -223,6 +235,7 @@ function setActionKey(changes) {
     ...changes,
     at: editor.at,
   };
+  if (editor.action !== "dead") delete key.opacity;
   const i = keys.findIndex((k) => k.at === editor.at);
   if (i >= 0) keys[i] = key;
   else {
