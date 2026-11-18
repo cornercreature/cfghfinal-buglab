@@ -81,6 +81,7 @@ async function applyImported(item) {
   try {
     img.src = url;
     await img.decode();
+    imageBlobs.set(img, item.blob);
   } finally {
     URL.revokeObjectURL(url);
   }

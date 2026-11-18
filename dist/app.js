@@ -654,6 +654,7 @@ function render() {
     const file = e.target.files[0],
       part = timingPart;
     if (!file) return;
+    setFileButtons(false);
     e.target.disabled = true;
     const note = $("importNote");
     note.textContent = "Reading GIF frames…";
@@ -674,6 +675,8 @@ function render() {
     } catch (error) {
       note.textContent = error.message || "Could not import this GIF.";
       e.target.disabled = false;
+    } finally {
+      setFileButtons(true);
     }
   });
   on("clip", "change", (e) => {
@@ -921,9 +924,25 @@ loadImages
       const replacements = await clipStore("readonly", (store) =>
         store.getAll(),
       );
-      await Promise.all(replacements.map(applyImported));
+      const opened = replacements.find((item) => item.name === "openedSprite");
+      if (opened) {
+        const decoded = await readSprite(opened.file);
+        installArtwork(decoded);
+        if (data.openedId !== opened.id)
+          data = {
+            ...decoded.settings,
+            spriteName: opened.file.name,
+            openedId: opened.id,
+          };
+      }
+      await Promise.all(
+        replacements
+          .filter((item) => Object.hasOwn(clips, item.name))
+          .map(applyImported),
+      );
     } catch {}
     ready = true;
+    setupSpriteFiles();
     render();
     draw();
     requestAnimationFrame(tick);

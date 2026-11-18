@@ -25,9 +25,14 @@
             it.
           </p>
         </div>
-        <button id="lock" class="primary">
-          <i data-icon="check"></i><span>Confirm placement</span>
-        </button>
+        <div class="sprite-actions">
+          <button id="openSprite" disabled>Open sprite…</button>
+          <input type="file" id="spriteFile" accept=".spider" hidden />
+          <button id="saveSprite" disabled>Save Sprite…</button>
+          <button id="lock" class="primary">
+            <i data-icon="check"></i><span>Confirm placement</span>
+          </button>
+        </div>
       </section>
       <div class="layout">
         <section class="paper">
@@ -90,9 +95,23 @@
         </aside>
       </div>
     </main>
+    <dialog id="spriteDialog" aria-labelledby="spriteDialogTitle">
+      <form id="spriteForm">
+        <h2 id="spriteDialogTitle">Save Sprite</h2>
+        <label for="spriteName">Sprite name</label>
+        <input id="spriteName" class="numeric" type="text" maxlength="100" required />
+        <p>Download a .spider file with your artwork and settings.</p>
+        <p id="exportError" role="alert" hidden></p>
+        <div class="sprite-actions">
+          <button type="button" id="cancelSprite">Cancel</button>
+          <button type="submit" class="primary">Download sprite</button>
+        </div>
+      </form>
+    </dialog>
     <script src="clips.js"></script>
     <script src="assets/omggif.js"></script>
     <script src="import.js"></script>
+    <script src="sprite-file.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

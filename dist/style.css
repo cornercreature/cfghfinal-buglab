@@ -496,3 +496,34 @@ button:disabled {
 .upload:focus-within {
   outline: 2px solid var(--accent);
 }
+
+.sprite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+#spriteDialog {
+  width: min(360px, 90vw);
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  color: inherit;
+}
+#spriteDialog::backdrop {
+  background: #211b304d;
+}
+#spriteDialog h2 {
+  margin-bottom: 18px;
+  font-size: 20px;
+}
+#spriteDialog label {
+  font-size: 13px;
+}
+#spriteDialog .sprite-actions {
+  margin-top: 20px;
+  justify-content: end;
+}
+#exportError {
+  color: #9d3145;
+}
