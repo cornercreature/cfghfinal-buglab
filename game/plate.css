@@ -1,0 +1,462 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#desktop {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+body {
+  font-family: "National Park", "Arial Rounded MT Bold", Arial, sans-serif;
+  color: #242424;
+  background: #919191;
+}
+#desktop {
+  position: relative;
+  isolation: isolate;
+  user-select: none;
+  touch-action: none;
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  color: inherit;
+  cursor: pointer;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #555;
+  outline-offset: 3px;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+#plate {
+  position: absolute;
+  inset: 0;
+  background: #f1f1f1 url("assets/cb2f3.svg") center/100% 100% no-repeat;
+  cursor: crosshair;
+}
+#tools {
+  --unit: clamp(39px, min(5.5vw, 7.7vh), 82px);
+  position: absolute;
+  z-index: 2;
+  left: 1.1%;
+  top: 2.55%;
+  width: calc(var(--unit) * 1.38);
+  height: 89.5%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(8px, 2.9vh, 30px) 0 clamp(8px, 2.8vh, 30px);
+  background: white;
+  border: 1px solid #e7e7e7;
+  border-radius: clamp(8px, 1vw, 14px);
+}
+.tool-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(5px, 1.94vh, 20px);
+}
+.tool-group > button,
+#foodMode {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #e5e5e5;
+  border-radius: 50%;
+  background: #fff;
+  width: var(--unit);
+  height: var(--unit);
+}
+.tool-group > button[data-tool="reset"] {
+  border: 0;
+}
+.tool-group > button:is(:hover, :focus-visible),
+#foodMode:hover,
+.tool-group > button[aria-pressed="true"] {
+  background: #f1f1f1;
+}
+.tool-group > button img {
+  display: block;
+}
+.rule {
+  width: calc(var(--unit) * 0.845);
+  height: clamp(2px, 0.34vh, 4px);
+  background: url(assets/38305.svg) center/100% 100%;
+}
+.tool-group [data-tip]:is(:hover, :focus-visible)::after,
+#foodMode:is(:hover, :focus-visible)::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 12px);
+  white-space: nowrap;
+  background: #fff;
+  color: #555;
+  border: 1px solid #ddd;
+  font:
+    13px Arial,
+    sans-serif;
+  padding: 5px 9px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+.bug-icon {
+  width: 86%;
+  aspect-ratio: 67.25/47;
+  position: relative;
+}
+.bug-icon img {
+  position: absolute;
+}
+#foodMode {
+  position: absolute;
+  z-index: 2;
+  width: clamp(66px, min(10.9vw, 15.4vh), 158px);
+  height: auto;
+  aspect-ratio: 1;
+  right: 3%;
+  bottom: 5.25%;
+  background: #ffffffe3;
+  border-width: 2px;
+}
+#foodMode[aria-pressed="true"] {
+  background: #dadada;
+  border-color: #666;
+}
+#foodMode[aria-pressed="true"] i {
+  background: #686868;
+}
+#foodMode:is(:hover, :focus-visible)::after {
+  left: auto;
+  right: calc(100% + 8px);
+}
+.crumb-icon {
+  position: relative;
+  width: 46%;
+  aspect-ratio: 69/76;
+}
+.crumb-icon i {
+  position: absolute;
+  background: #d9d9d9;
+}
+.crumb-icon i:nth-child(1) {
+  width: 51%;
+  aspect-ratio: 1;
+  top: 0;
+  right: 0;
+}
+.crumb-icon i:nth-child(2) {
+  width: 32%;
+  aspect-ratio: 1;
+  top: 43%;
+  left: 0;
+}
+.crumb-icon i:nth-child(3) {
+  width: 42%;
+  aspect-ratio: 1;
+  right: 4%;
+  bottom: 0;
+}
+#scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+  pointer-events: none;
+}
+#windows {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.window {
+  position: absolute;
+  width: min(41vw, 58vh, 592px);
+  min-width: min(300px, 94vw);
+  max-width: 94vw;
+  max-height: 94vh;
+  overflow: auto;
+  pointer-events: auto;
+  background: white;
+  border-radius: 9px;
+  border: 1px solid #e4e4e4;
+  box-shadow: 0 1px 4px #0000000a;
+}
+.window[hidden],
+[hidden] {
+  display: none !important;
+}
+.window.zoomed {
+  width: min(68vw, 75vh, 760px);
+}
+.titlebar {
+  height: clamp(24px, 3.1vh, 34px);
+  background: #e5e4e4;
+  border-bottom: 1px solid #cfcfcf;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: #777;
+  font-size: clamp(12px, 1.1vw, 18px);
+  touch-action: none;
+}
+.titlebar:active {
+  cursor: grabbing;
+}
+.traffic {
+  position: absolute;
+  left: 2.5%;
+  height: 68%;
+  aspect-ratio: 68/20;
+  background: url(assets/a62bf.svg) center/contain no-repeat;
+  display: flex;
+}
+.traffic button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+}
+.lab-inner,
+.window[data-name="color"].zoomed {
+  width: min(55vw, 65vh, 580px);
+}
+.color-inner {
+  padding: 3%;
+}
+.lab-display,
+.color-display {
+  position: relative;
+  background: #efefef;
+  aspect-ratio: 559/436;
+}
+.specimen {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.lab-modes {
+  position: absolute;
+  left: 2%;
+  top: 2.5%;
+  padding: 6px;
+  background: #fff;
+  border-radius: 9px;
+}
+.lab-modes span {
+  display: grid;
+  place-items: center;
+  width: clamp(28px, 3.5vw, 54px);
+  aspect-ratio: 1;
+  background: #dedede;
+  border-radius: 50%;
+}
+.lab-modes img {
+  width: 45%;
+}
+.lab-controls {
+  display: flex;
+  align-items: center;
+  gap: 6%;
+  margin: 3% 0;
+  color: #777;
+}
+.shape-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
+.shape-group legend,
+.dimension {
+  font-size: clamp(13px, 1.55vw, 23px);
+}
+.shape-group button {
+  width: clamp(29px, 3.4vw, 48px);
+  aspect-ratio: 1;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin: 4px 3px 0 0;
+  padding: 0;
+  vertical-align: middle;
+}
+.shape-group img {
+  width: 100%;
+  display: block;
+}
+.shape-group i {
+  display: inline-block;
+  height: 52%;
+  width: 38%;
+  background: #cecece;
+}
+.shape-group button[aria-pressed="true"] {
+  border-color: #777;
+}
+.dimension {
+  flex: 1;
+}
+.dimension label,
+.rgb label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0;
+}
+.dimension input {
+  width: 72%;
+}
+input[type="range"] {
+  appearance: none;
+  height: 7px;
+  background: #ccc url(assets/057c9.svg) center/100% 100%;
+  border-radius: 20px;
+  cursor: pointer;
+  min-width: 0;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #888;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: #888;
+  border: 0;
+  border-radius: 50%;
+}
+.lab-actions {
+  display: flex;
+  gap: 3%;
+}
+.lab-actions button {
+  flex: 1;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 9px;
+  font-size: clamp(15px, 1.6vw, 26px);
+  padding: 2.4%;
+}
+.lab-actions button:hover {
+  background: #f4f4f4;
+}
+.tank-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5%;
+  margin: 4.2%;
+}
+.slot {
+  aspect-ratio: 1.05;
+  position: relative;
+}
+.slot canvas {
+  position: absolute;
+  inset: 0;
+}
+.remove {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  background: #fff;
+  border: 0;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  opacity: 0;
+}
+.slot:hover .remove,
+.remove:focus-visible {
+  opacity: 1;
+}
+.tank-count,
+.target-label {
+  color: #777;
+  font-size: clamp(12px, 1.2vw, 18px);
+  margin: 3%;
+}
+.window[data-name="color"] {
+  width: min(31vw, 45vh, 460px);
+  min-width: min(245px, 92vw);
+}
+.color-inner {
+  padding: 1% 10% 7%;
+}
+.color-display {
+  aspect-ratio: 1;
+  background: #dadada;
+}
+.empty-target {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #666;
+  font-size: 13px;
+  text-align: center;
+}
+.rgb label {
+  font-family: Arial, sans-serif;
+  color: #777;
+}
+.rgb input {
+  flex: 1;
+}
+.help-inner {
+  padding: 6%;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.help-inner h2 {
+  margin: 0;
+}
+.help-inner dt {
+  font-weight: 650;
+}
+.help-inner dd {
+  margin: 2px 0 10px;
+  color: #555;
+}
+#message {
+  position: absolute;
+  z-index: 21;
+  left: 50%;
+  bottom: 2%;
+  transform: translateX(-50%);
+  border-radius: 7px;
+  padding: 6px 12px;
+  background: #fffffff2;
+  color: #454545;
+  font:
+    13px Arial,
+    sans-serif;
+  pointer-events: none;
+  text-align: center;
+}
+#message:empty {
+  display: none;
+}
+@font-face {
+  font-family: "National Park";
+  src: url(assets/national-park.ttf) format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}

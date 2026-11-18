@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#919191" />
+    <title>Bug Lab · The Magic Plate</title>
+    <link rel="stylesheet" href="plate.css" />
+  </head>
+  <body>
+    <main id="desktop" aria-label="Digi-spider research lab">
+      <div
+        id="plate"
+        aria-label="Magic plate. Click inside the oval to spawn a spider."
+      ></div>
+      <nav aria-label="Research tools" id="tools">
+        <div class="tool-group" id="topTools"></div>
+        <div class="tool-group" id="bottomTools"></div>
+      </nav>
+      <button
+        id="foodMode"
+        type="button"
+        aria-label="Distribute letter food"
+        aria-pressed="false"
+        data-tip="Letter food"
+      >
+        <span aria-hidden="true" class="crumb-icon"><i></i><i></i><i></i></span>
+      </button>
+      <div id="windows"></div>
+      <canvas id="scene" aria-hidden="true"></canvas>
+      <div id="message" role="status"></div>
+    </main>
+    <template id="labContent"
+      ><div class="lab-inner">
+        <div class="lab-display">
+          <canvas
+            class="specimen"
+            aria-label="Live preview of the engineered spider"
+          ></canvas>
+          <div class="lab-modes">
+            <span title="Body shape mode"
+              ><img src="assets/f2f93.svg" alt="Shape mode"
+            /></span>
+          </div>
+        </div>
+        <div class="lab-controls">
+          <fieldset class="shape-group">
+            <legend>base shape</legend>
+            <button data-shape="ellipse" aria-label="Ellipse">
+              <img src="assets/1d665.svg" alt="" /></button
+            ><button data-shape="rectangle" aria-label="Rectangle">
+              <i></i>
+            </button>
+          </fieldset>
+          <div class="dimension">
+            <label
+              >Length<input
+                name="length"
+                type="range"
+                min="55"
+                max="260"
+                value="210" /></label
+            ><label
+              >Width<input
+                name="width"
+                type="range"
+                min="45"
+                max="260"
+                value="130"
+            /></label>
+          </div>
+        </div>
+        <div class="lab-actions">
+          <button data-cmd="clear">Clear</button
+          ><button data-cmd="add">Add to Tank</button>
+        </div>
+      </div></template
+    >
+    <template id="tankContent"
+      ><div class="tank-grid"></div>
+      <p class="tank-count"></p
+    ></template>
+    <template id="colorContent"
+      ><div class="color-inner">
+        <div class="target-label">selected target</div>
+        <div class="color-display">
+          <canvas class="specimen" aria-label="Selected spider"></canvas
+          ><span class="empty-target">Click a spider to select it.</span>
+        </div>
+        <div class="rgb"></div></div
+    ></template>
+    <template id="helpContent"
+      ><div class="help-inner">
+        <h2>The magic plate</h2>
+        <p>
+          You’re the new intern in a computer wizard’s lab. Your digi-spiders
+          are learning to eat words. For now, their trails make excellent
+          drawings.
+        </p>
+        <dl>
+          <dt>Spawn &amp; select</dt>
+          <dd>
+            Click the oval to spawn. A quick click on a spider selects it for
+            the color picker.
+          </dd>
+          <dt>Nudge &amp; damage</dt>
+          <dd>
+            Hold longer than 0.4 seconds and release by 0.8 to nudge away from
+            your pointer. A longer hold hurts. Each extra second advances the
+            injury. Release before the warning ring fills.
+          </dd>
+          <dt>Recovery</dt>
+          <dd>
+            After 5 seconds without damage, a spider heals one stage. A
+            previously injured spider needs release by 0.65 seconds for a safe
+            nudge.
+          </dd>
+          <dt>Food</dt>
+          <dd>
+            Toggle the round button at lower right, then click to scatter
+            letters. Spiders follow the nearest letter and eat it.
+          </dd>
+          <dt>Lab &amp; tank</dt>
+          <dd>
+            Choose a body shape and its dimensions, then add the variety to your
+            tank. Each spawn draws from your tank at a random size. The tank has
+            six reusable slots.
+          </dd>
+          <dt>Reset &amp; photograph</dt>
+          <dd>
+            The curved arrow wipes the desktop and keeps the tank. The download
+            button takes a PNG photograph of the plate.
+          </dd>
+        </dl>
+      </div></template
+    >
+    <script src="sprite.js" defer></script>
+    <script src="plate.js" defer></script>
+    <script src="tools.js" defer></script>
+  </body>
+</html>
