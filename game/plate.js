@@ -253,7 +253,9 @@ function paintTrail(b) {
 }
 function act(b, action) {
   if (b.action === "dead") return;
-  if (b.action !== action) b.enlargedUntil = now + stateGrowthDuration;
+  if (b.action !== action) {
+    b.enlargedUntil = action === "default" ? 0 : now + stateGrowthDuration;
+  }
   b.action = action;
   b.age = 0;
   if (action === "dead") b.frozenGait = b.gait;
@@ -309,7 +311,6 @@ function advance(b, dt) {
   }
   if (b.injury && now >= b.healAt && state.hold?.b !== b) {
     b.injury--;
-    b.enlargedUntil = now + stateGrowthDuration;
     b.healAt = b.injury ? now + 5 : Infinity;
   }
   b.gait += dt;
