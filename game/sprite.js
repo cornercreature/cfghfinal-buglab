@@ -89,10 +89,10 @@ function eyes(c, e, seconds) {
   centered(c, e, 0, 0, w, (w * imgs[e].naturalHeight) / imgs[e].naturalWidth);
 }
 const neutral = { x: 0, y: 0, angle: 0, size: 100, opacity: 100 };
-function wholePose(b) {
+function wholePose(b, clipAge = b.age) {
   const keys = data.actions[b.action]?.whole;
   if (!keys?.length) return neutral;
-  const at = Math.min(1000, (1000 * b.age) / data.holds[b.action]);
+  const at = Math.min(1000, (1000 * clipAge) / data.holds[b.action]);
   let prev = { at: 0, ...neutral },
     next = { at: 1000, ...neutral };
   for (const k of keys) {

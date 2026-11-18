@@ -13,6 +13,7 @@
         id="plate"
         aria-label="Magic plate. Click inside the oval to spawn a spider."
       ></div>
+      <canvas id="trailLayer" aria-hidden="true"></canvas>
       <nav aria-label="Research tools" id="tools">
         <div class="tool-group" id="topTools"></div>
         <div class="tool-group" id="bottomTools"></div>
@@ -21,11 +22,13 @@
         id="foodMode"
         type="button"
         aria-label="Distribute letter food"
+        aria-keyshortcuts="F"
         aria-pressed="false"
         data-tip="Letter food"
       >
         <span aria-hidden="true" class="crumb-icon"><i></i><i></i><i></i></span>
       </button>
+      <a id="tuneLink" href="?tuning" target="_blank" rel="noopener">Tuning workbench ↗</a>
       <div id="windows"></div>
       <canvas id="scene" aria-hidden="true"></canvas>
       <div id="message" role="status"></div>
@@ -100,31 +103,28 @@
         <dl>
           <dt>Spawn &amp; select</dt>
           <dd>
-            Click the oval to spawn. Each press on a spider gives its body and
-            the trail it draws from then on a new color. A quick click also
-            selects the spider for the color picker.
+            Click the oval to spawn a spider with a random body and trail color.
+            Click a spider briefly to select it for the color picker.
           </dd>
           <dt>Nudge &amp; damage</dt>
           <dd>
-            Hold longer than 0.4 seconds and release by 0.8 to nudge away from
-            your pointer. A longer hold hurts. Each extra second advances the
+            Hold through the nudge window and release to move away from
+            your pointer. A longer hold hurts. Holding through the next threshold advances the
             injury. Release before the warning ring fills.
           </dd>
           <dt>Recovery</dt>
           <dd>
-            After 5 seconds without damage, a spider heals one stage. A
-            previously injured spider needs release by 0.65 seconds for a safe
-            nudge.
+            After 5 seconds without damage, a spider heals one stage. Previously injured spiders have a shorter safe nudge window.
           </dd>
           <dt>Food</dt>
           <dd>
-            Toggle the round button at lower right, then click to scatter
-            letters. Spiders follow the nearest letter and eat it.
+            Press F or use the round button at lower right, then click to scatter
+            letters. Spiders chase any letter, moving faster toward favorites. The first to reach a letter eats it and turns away.
           </dd>
           <dt>Lab &amp; tank</dt>
           <dd>
             Choose a body shape and its dimensions, then add the variety to your
-            tank. Each spawn draws from your tank at a random size. The tank has
+            tank. The lab assigns each variety a favorite letter group. With an empty tank, each spider gets a random favorite. Each spawn draws from your tank at a random size. The tank has
             six reusable slots.
           </dd>
           <dt>Reset &amp; photograph</dt>
@@ -135,8 +135,9 @@
         </dl>
       </div></template
     >
-    <script src="sprite.js" defer></script>
-    <script src="plate.js" defer></script>
+    <script src="tuning.js" defer></script>
+    <script src="sprite.js?v=2" defer></script>
+    <script src="plate.js?v=3" defer></script>
     <script src="tools.js" defer></script>
   </body>
 </html>

@@ -167,6 +167,7 @@ button:disabled {
   right: 4%;
   bottom: 0;
 }
+#trailLayer,
 #scene {
   position: absolute;
   inset: 0;
@@ -175,6 +176,7 @@ button:disabled {
   z-index: 20;
   pointer-events: none;
 }
+#trailLayer { z-index: 1; }
 #windows {
   position: absolute;
   inset: 0;
@@ -460,3 +462,18 @@ input[type="range"]::-moz-range-thumb {
   font-weight: 100 900;
   font-display: swap;
 }
+
+.diet-label { position: absolute; bottom: 4%; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: clamp(10px, 1vw, 14px); background: white; padding: 1px 5px; border-radius: 3px; }
+#tuneLink{position:absolute;right:18px;top:16px;z-index:2;background:#fff;color:#555;padding:8px 13px;border-radius:18px;font:14px "National Park",sans-serif;text-decoration:none}
+.trial :is(#tools,#foodMode,#tuneLink){display:none}
+body.workbench{overflow:auto;background:#e9e9e7;color:#282828;height:auto;min-height:100vh}
+.workbench main:not([hidden]){position:static;max-width:760px;margin:32px auto;padding:0 20px 32px}
+.workbench header a{color:#505050}.workbench h1{font-size:38px;margin:10px 0 22px}.workbench section{background:white;border:1px solid #ccc;border-radius:12px;padding:18px 24px;margin:12px 0}.workbench h2{margin:0;font-size:21px}.workbench p{color:#545454;margin:6px 0 14px}
+.tune-rail{position:relative;height:32px;margin:0 4px;background:linear-gradient(#aaa,#aaa) center/100% 3px no-repeat}
+.tune-rail input[type=range]{appearance:none;position:absolute;inset:0;width:100%;height:32px;background:transparent;pointer-events:none;margin:0}
+.tune-rail input::-webkit-slider-thumb{appearance:none;background:#444;border:2px solid white;border-radius:50%;height:20px;width:20px;pointer-events:auto;cursor:ew-resize}
+.tune-rail input::-moz-range-thumb{background:#444;border:2px solid white;border-radius:50%;height:16px;width:16px;pointer-events:auto;cursor:ew-resize}
+.tune-rail input:focus-visible{outline:2px solid #607b93}.tune-rail input:focus{z-index:1}
+.tune-legend{display:flex;justify-content:space-between;gap:6px}.tune-legend label{font-size:14px}.tune-legend output{display:block;font-variant-numeric:tabular-nums;color:#555}
+.workbench button{background:#eee;border:1px solid #aaa;padding:8px 14px;border-radius:6px;cursor:pointer}.workbench #trialRun{background:#333;color:white}.workbench #saved{margin-left:8px;font-size:13px}.workbench iframe{margin-top:14px;width:100%;height:300px;border:0;border-radius:8px}
+html:has(body.workbench){overflow-y:auto}

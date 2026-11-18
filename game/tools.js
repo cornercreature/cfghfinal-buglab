@@ -218,6 +218,7 @@ function setupLab(el) {
       w: draft.w,
       h: draft.h,
       color: draft.color,
+      preference: assignPreference(state.tank),
     });
     saveTank();
     refreshTank();
@@ -254,6 +255,10 @@ function restoreTank() {
             /^#[0-9a-f]{6}$/i.test(v.color),
         )
         .slice(0, 6);
+    for (const variety of state.tank) {
+      if (!Object.hasOwn(diets, variety.preference)) variety.preference = assignPreference(state.tank);
+    }
+    saveTank();
   } catch {}
 }
 function preview(cv, b, angle = 0.3) {
@@ -297,6 +302,10 @@ function refreshTank() {
       cv.className = "specimen";
       cv.setAttribute("aria-label", v.shape + " variety");
       slot.append(cv);
+      const label = document.createElement("span");
+      label.className = "diet-label";
+      label.textContent = "Likes " + v.preference;
+      slot.append(label);
       const rem = document.createElement("button");
       rem.className = "remove";
       rem.textContent = "×";
@@ -366,6 +375,13 @@ function drawPreviews(dt) {
     preview(color.querySelector("canvas"), state.selected, 0);
 }
 document.addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() === "f" && state.ready && !e.repeat &&
+      !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing &&
+      !e.target.isContentEditable && !e.target.closest?.("textarea, select, input:not([type=range])")) {
+    e.preventDefault();
+    $("foodMode").click();
+    return;
+  }
   if (e.key === "Escape") {
     const open = [...windows.entries()]
       .filter(([, w]) => !w.hidden)
@@ -395,4 +411,8 @@ async function init() {
     console.error(error);
   }
 }
-init();
+if (pageMode === "tuning") initWorkbench();
+else {
+  if (pageMode === "preview") document.body.classList.add("trial");
+  init();
+}

@@ -2,6 +2,8 @@
 const $ = (id) => document.getElementById(id);
 const scene = $("scene"),
   screenCtx = scene.getContext("2d"),
+  trailLayer = $("trailLayer"),
+  trailCtx = trailLayer.getContext("2d"),
   trail = document.createElement("canvas"),
   ink = trail.getContext("2d");
 const state = {
@@ -46,7 +48,7 @@ function resizeGame() {
   W = w;
   H = h;
   DPR = d;
-  for (const cv of [scene, trail]) {
+  for (const cv of [scene, trailLayer, trail]) {
     cv.width = Math.round(w * d);
     cv.height = Math.round(h * d);
   }
@@ -69,7 +71,8 @@ function inOval(x, y) {
     1
   );
 }
-function randomColor(h = Math.random() * 6) {
+function randomColor() {
+  const h = Math.random() * 6;
   const i = Math.floor(h),
     f = h - i,
     v = random(0.68, 0.96),
@@ -95,22 +98,6 @@ function randomColor(h = Math.random() * 6) {
       .join("")
   );
 }
-function recolorOnPress(b) {
-  const [r, g, blue] = b.color.match(/\w\w/g).map((hex) => parseInt(hex, 16));
-  const max = Math.max(r, g, blue);
-  const range = max - Math.min(r, g, blue);
-  if (range === 0) {
-    b.color = randomColor();
-  } else {
-    let hue;
-    if (max === r) hue = (g - blue) / range;
-    else if (max === g) hue = 2 + (blue - r) / range;
-    else hue = 4 + (r - g) / range;
-    // Move at least one sixth of the color wheel in either direction.
-    b.color = randomColor((hue + random(1, 5) + 6) % 6);
-  }
-  if (state.selected === b) syncPicker();
-}
 function specimen(shape = "ellipse", w = 160, h = 160, color = "#080808") {
   return {
     shape,
@@ -123,18 +110,27 @@ function specimen(shape = "ellipse", w = 160, h = 160, color = "#080808") {
     frozenGait: 0,
   };
 }
+const diets = { vowels: "AEIOU", consonants: "BCDFGHJKLMNPQRSTVWXYZ", "A–J": "ABCDEFGHIJ" };
+function assignPreference(varieties = []) {
+  const counts = Object.keys(diets).map(group => [group, varieties.filter(v => v.preference === group).length]);
+  const fewest = Math.min(...counts.map(([, count]) => count));
+  const choices = counts.filter(([, count]) => count === fewest);
+  return choices[Math.floor(Math.random() * choices.length)][0];
+}
 function spawn(x, y, starter = false) {
   if (!inOval(x, y)) return null;
   const v = state.tank[Math.floor(Math.random() * state.tank.length)];
   const b = Object.assign(
-    specimen(v?.shape, v?.w, v?.h, v ? randomColor() : data.color),
+    specimen(v?.shape, v?.w, v?.h, randomColor()),
     {
       id: nextId++,
+      preference: v?.preference ?? assignPreference(),
+      exitHeading: 0,
       x,
       y,
       dir: starter ? -0.97 : random(-Math.PI, Math.PI),
       scale:
-        (starter ? 0.7 : random(0.3, 0.76)) *
+        random(tuning.minSize / 100, tuning.maxSize / 100) *
         clamp(Math.min(W / 1080, H / 735), 0.55, 1.24),
       speed: random(24, 46),
       phase: random(0, 12),
@@ -143,6 +139,7 @@ function spawn(x, y, starter = false) {
       scarred: false,
       healAt: Infinity,
       prev: null,
+      enlargedUntil: 0,
       steerUntil: 0,
       nudgeDir: 0,
     },
@@ -207,15 +204,17 @@ function contain(b) {
   b.x = clamp(b.x, wall.left, wall.right);
   b.y = clamp(b.y, wall.top, wall.bottom);
 }
+const stateGrowthDuration = 0.5;
 function pose(b) {
-  const p = wholePose(b),
+  const clipAge = b.action === "dead" ? Math.max(0, b.age - stateGrowthDuration) : b.age;
+  const p = wholePose(b, clipAge),
     a = b.dir + Math.PI / 2,
     offsetDir = b.action === "nudge" ? b.nudgeDir : a;
   const x =
     b.x + b.scale * (p.x * Math.cos(offsetDir) - p.y * Math.sin(offsetDir));
   const y =
     b.y + b.scale * (p.x * Math.sin(offsetDir) + p.y * Math.cos(offsetDir));
-  const s = (b.scale * p.size) / 100,
+  const s = (b.scale * p.size) / 100 * (now < b.enlargedUntil ? 2 : 1),
     angle = a + (p.angle * Math.PI) / 180,
     wall = wallLimits(b, angle, s);
   return {
@@ -254,6 +253,7 @@ function paintTrail(b) {
 }
 function act(b, action) {
   if (b.action === "dead") return;
+  if (b.action !== action) b.enlargedUntil = now + stateGrowthDuration;
   b.action = action;
   b.age = 0;
   if (action === "dead") b.frozenGait = b.gait;
@@ -278,7 +278,8 @@ function updateHold(time) {
   const elapsed = (time - h.start) / 1000;
   while (state.hold && elapsed > h.next) {
     h.hits++;
-    h.next += 1;
+    h.from = h.next;
+    h.next += h.b.injury === 0 ? h.seriousGap : h.deathGap;
     injure(h.b);
   }
 }
@@ -287,7 +288,7 @@ function releaseHold(time, cancel = false) {
   if (!h) return;
   if (!cancel) updateHold(time);
   if (!cancel && !h.hits && h.b.action !== "dead") {
-    if (time - h.start <= 400) {
+    if (time - h.start <= h.selectMs) {
       state.selected = h.b;
       syncPicker();
       notify("Spider selected.", 950);
@@ -304,26 +305,30 @@ function advance(b, dt) {
   b.age += dt;
   if (b.action === "dead") return;
   if (b.action !== "default" && b.age >= data.holds[b.action]) {
-    b.action = "default";
-    b.age = 0;
+    act(b, "default");
   }
   if (b.injury && now >= b.healAt && state.hold?.b !== b) {
     b.injury--;
+    b.enlargedUntil = now + stateGrowthDuration;
     b.healAt = b.injury ? now + 5 : Infinity;
   }
   b.gait += dt;
   let nearest = null,
-    min = Infinity;
+    soonest = Infinity, pursuitSpeed = 1;
   for (const f of state.food) {
     const d = Math.hypot(f.x - b.x, f.y - b.y);
-    if (d < min) {
-      min = d;
+    const speed = diets[b.preference].includes(f.letter) ? 1.35 : 0.75;
+    const travel = d / speed;
+    if (travel < soonest) {
+      soonest = travel;
+      pursuitSpeed = speed;
       nearest = f;
     }
   }
   let goal = b.dir + Math.sin(now * 1.4 + b.phase) * 0.52;
   const wall = wallLimits(b, b.dir + Math.PI / 2, b.scale);
-  if (nearest && b.steerUntil <= now) {
+  const chasing = nearest && b.steerUntil <= now && b.action !== "eat";
+  if (chasing) {
     goal = Math.atan2(nearest.y - b.y, nearest.x - b.x);
     const reachableDistance = Math.hypot(
       clamp(nearest.x, wall.left, wall.right) - b.x,
@@ -334,9 +339,18 @@ function advance(b, dt) {
       b.action === "default"
     ) {
       state.food.splice(state.food.indexOf(nearest), 1);
+      let dx = 0, dy = 0;
+      for (const other of state.bugs) {
+        if (other === b || other.action === "dead") continue;
+        const x = b.x - other.x, y = b.y - other.y;
+        const squared = x*x + y*y;
+        if (squared > 0 && squared < 160*160) { dx += x/squared; dy += y/squared; }
+      }
+      b.exitHeading = dx || dy ? Math.atan2(dy,dx) : b.dir + random(-1.4,1.4);
       act(b, "eat");
     }
   }
+  if (b.action === "eat") goal = b.exitHeading;
   if (b.steerUntil > now) goal = b.nudgeDir;
   const reach = nearest ? 10 : Math.min(22, Math.min(W, H) * 0.04);
   let ax = Math.cos(goal),
@@ -354,7 +368,7 @@ function advance(b, dt) {
   const distance =
     dt *
     b.speed *
-    (b.action === "eat" ? 0.27 : 1) *
+    (chasing && b.action !== "eat" ? pursuitSpeed : 1) *
     (b.steerUntil > now ? 1.6 : 1);
   b.x += Math.cos(b.dir) * distance;
   b.y += Math.sin(b.dir) * distance;
@@ -362,13 +376,17 @@ function advance(b, dt) {
   paintTrail(b);
 }
 function drawFood(c) {
-  c.fillStyle = "#454545";
-  c.font = "bold 21px Georgia,serif";
+  c.fillStyle = "#0009FF";
+  c.font = 'normal 21px "Times New Roman", Times, serif';
   c.textAlign = "center";
   c.textBaseline = "middle";
-  for (const f of state.food) c.fillText(f.letter, f.x, f.y);
+  for (const f of state.food) {
+    c.fillText(f.letter, f.x, f.y);
+    const metrics = c.measureText(f.letter);
+    c.fillRect(f.x - metrics.width / 2, f.y - metrics.alphabeticBaseline + 2, metrics.width, 1);
+  }
 }
-function drawScene(c, photo = false) {
+function drawTrails(c, photo) {
   c.save();
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
   c.clearRect(0, 0, W, H);
@@ -386,6 +404,13 @@ function drawScene(c, photo = false) {
     c.stroke();
     c.restore();
   }
+  c.restore();
+}
+function drawScene(c, photo = false) {
+  drawTrails(photo ? c : trailCtx, photo);
+  c.save();
+  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (!photo) c.clearRect(0, 0, W, H);
   drawFood(c);
   for (const b of state.bugs) {
     if (photo && b.action === "dead") continue;
@@ -396,10 +421,10 @@ function drawScene(c, photo = false) {
   if (h && !photo) {
     const p = pose(h.b),
       elapsed = (performance.now() - h.start) / 1000,
-      from = h.hits ? h.next - 1 : 0;
+      from = h.from;
     c.save();
     c.strokeStyle =
-      h.hits >= 2 ? "#bd4036" : elapsed > 0.4 ? "#aa742c" : "#747474";
+      h.b.injury >= 2 ? "#bd4036" : elapsed * 1000 > h.selectMs ? "#aa742c" : "#747474";
     c.lineWidth = 3;
     c.beginPath();
     c.arc(
@@ -448,7 +473,6 @@ document.addEventListener(
     $("desktop").setPointerCapture(e.pointerId);
     if (b) {
       if (b.action === "dead") return;
-      recolorOnPress(b);
       const p = pose(b),
         dx = p.x - e.clientX,
         dy = p.y - e.clientY;
@@ -458,7 +482,11 @@ document.addEventListener(
         start: performance.now(),
         dir: Math.hypot(dx, dy) > 1 ? Math.atan2(dy, dx) : b.dir,
         hits: 0,
-        next: b.scarred ? 0.65 : 0.8,
+        from: 0,
+        selectMs: tuning.nudge * 1000,
+        seriousGap: tuning.serious - tuning.light,
+        deathGap: tuning.death - tuning.serious,
+        next: b.scarred ? injuredCutoff() : tuning.light,
       };
     } else if (state.foodMode) {
       state.food.push({
@@ -547,7 +575,7 @@ function tick(ms) {
   updateHold(ms);
   for (const b of state.bugs) advance(b, dt);
   state.bugs = state.bugs.filter(
-    (b) => b.action !== "dead" || b.age < data.holds.dead,
+    (b) => b.action !== "dead" || b.age < stateGrowthDuration + data.holds.dead,
   );
   drawScene(screenCtx);
   drawPreviews(dt);
