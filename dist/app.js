@@ -49,6 +49,7 @@ const defaults = {
   shape: "ellipse",
   color: "#080808",
   locked: false,
+  angles: { left: 0, right: 0 },
   points: {
     body: [0, 10],
     head: [0, -101],
@@ -66,6 +67,15 @@ try {
   if (saved?.points?.right && saved?.holds?.dead && saved?.timers?.left)
     data = saved;
 } catch {}
+data.angles = Object.fromEntries(
+  ["left", "right"].map((side) => {
+    const angle = data.angles?.[side];
+    return [
+      side,
+      Number.isFinite(angle) ? Math.max(-180, Math.min(180, angle)) : 0,
+    ];
+  }),
+);
 function save() {
   try {
     localStorage.setItem("spider-studio-v1", JSON.stringify(data));
@@ -210,11 +220,34 @@ function bounds(id) {
     ? [45, 45]
     : [(280.2 * clips[id].width) / clips[id].height, 280.2];
 }
+function isLeg(id) {
+  return id === "left" || id === "right";
+}
+function legPivot(id) {
+  return bounds(id)[0] * (id === "left" ? 0.26 : -0.26);
+}
+function partTransform(id) {
+  const matrix = new DOMMatrix().translate(...data.points[id]);
+  if (isLeg(id)) {
+    const pivot = legPivot(id);
+    matrix
+      .translateSelf(pivot, 0)
+      .rotateSelf(data.angles[id])
+      .translateSelf(-pivot, 0);
+  }
+  return matrix;
+}
+function placePart(c, id) {
+  const { a, b, c: skew, d, e, f } = partTransform(id);
+  c.transform(a, b, skew, d, e, f);
+}
+function handleOffset(id) {
+  return (bounds(id)[0] / 2 + 18) * (id === "left" ? -1 : 1);
+}
 function drawSelection(c) {
-  const [x, y] = data.points[sel],
-    [w, h] = bounds(sel);
+  const [w, h] = bounds(sel);
   c.save();
-  c.translate(x, y);
+  placePart(c, sel);
   c.strokeStyle = "#a997c7";
   c.lineWidth = 0.9;
   c.setLineDash([3, 4]);
@@ -228,12 +261,30 @@ function drawSelection(c) {
       c.fillRect(px - 2.4, py - 2.4, 4.8, 4.8);
       c.strokeRect(px - 2.4, py - 2.4, 4.8, 4.8);
     }
+  if (isLeg(sel)) {
+    const handle = handleOffset(sel);
+    c.strokeStyle = "#6744bd";
+    c.beginPath();
+    c.moveTo(Math.sign(handle) * (w / 2 + 3), 0);
+    c.lineTo(handle, 0);
+    c.stroke();
+    for (const [x, radius] of [
+      [handle, 5],
+      [legPivot(sel), 3],
+    ]) {
+      c.beginPath();
+      c.arc(x, 0, radius, 0, 2 * Math.PI);
+      c.fillStyle = "white";
+      c.fill();
+      c.stroke();
+    }
+  }
   c.restore();
 }
 function spider(c, time) {
   for (const id of drawOrder) {
     c.save();
-    c.translate(...data.points[id]);
+    placePart(c, id);
     paintPart(c, id, time);
     c.restore();
   }
@@ -404,6 +455,14 @@ function partPanel() {
         "</label><label>Y position" +
         num("posY", Math.round(data.points[sel][1]), -200, 200) +
         "</label></div>") +
+    (isLeg(sel)
+      ? '<div class="row"><label for="angle">Rotation (°)</label>' +
+        num("angle", data.angles[sel], -180, 180) +
+        "</div>" +
+        (data.locked
+          ? ""
+          : '<p class="note">Drag the outer round handle to rotate around the inner pivot.</p>')
+      : "") +
     "</div>"
   );
 }
@@ -553,6 +612,12 @@ function render() {
         i === 1 ? v - data.points[sel][1] : 0,
       );
       render();
+    });
+  }
+  if ($("angle")) {
+    $("angle").disabled = data.locked;
+    numberField("angle", (degrees) => {
+      data.angles[sel] = degrees;
     });
   }
   document.querySelectorAll("[data-eye]").forEach(
@@ -723,21 +788,37 @@ function partAt(x, y) {
   for (const id of [...drawOrder].reverse()) {
     hit.setTransform(1, 0, 0, 1, 0, 0);
     hit.clearRect(0, 0, 13, 13);
-    hit.translate(6 + data.points[id][0] - x, 6 + data.points[id][1] - y);
+    hit.translate(6 - x, 6 - y);
+    placePart(hit, id);
     paintPart(hit, id, t);
     const rgba = hit.getImageData(0, 0, 13, 13).data;
     for (let a = 3; a < rgba.length; a += 4) if (rgba[a] > 90) return id;
   }
   return null;
 }
+function onRotationHandle(x, y) {
+  if (!isLeg(sel)) return false;
+  const handle = partTransform(sel).transformPoint({
+    x: handleOffset(sel),
+    y: 0,
+  });
+  return Math.hypot(x - handle.x, y - handle.y) <= 10 / geometry().fit;
+}
+function pointerAngle(x, y) {
+  const [cx, cy] = data.points[sel];
+  return (Math.atan2(y - cy, x - cx - legPivot(sel)) * 180) / Math.PI;
+}
 on("canvas", "pointerdown", (e) => {
   if (!ready || data.locked) return;
   const [x, y] = world(e),
-    id = partAt(x, y);
+    rotating = onRotationHandle(x, y),
+    id = rotating ? sel : partAt(x, y);
   if (!id) return;
   sel = id;
   tab = "parts";
-  drag = { x, y };
+  drag = rotating
+    ? { angleOffset: data.angles[sel] - pointerAngle(x, y) }
+    : { x, y };
   canvas.setPointerCapture(e.pointerId);
   canvas.focus();
   canvas.style.cursor = "grabbing";
@@ -751,7 +832,15 @@ on("canvas", "pointermove", (e) => {
   }
   const [x, y] = world(e);
   if (!drag) {
-    canvas.style.cursor = partAt(x, y) ? "grab" : "default";
+    canvas.style.cursor =
+      onRotationHandle(x, y) || partAt(x, y) ? "grab" : "default";
+    return;
+  }
+  if ("angleOffset" in drag) {
+    const degrees = Math.round(pointerAngle(x, y) + drag.angleOffset);
+    data.angles[sel] = ((degrees + 540) % 360) - 180;
+    if ($("angle")) $("angle").value = data.angles[sel];
+    draw();
     return;
   }
   move(sel, x - drag.x, y - drag.y);
