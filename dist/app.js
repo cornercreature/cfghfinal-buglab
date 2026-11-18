@@ -112,7 +112,7 @@ const sources = {
   pupilL: "8d0e8.svg",
   pupilR: "9d628.svg",
   left: "left.png",
-  right: "right.png",
+  right: "right.png?v=a6666244f7a8",
   nudge: "nudge.png",
 };
 const loadImages = Promise.all(
